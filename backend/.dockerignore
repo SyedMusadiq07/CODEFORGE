@@ -1,0 +1,11 @@
+node_modules
+npm-debug.log
+Dockerfile
+.dockerignore
+.env
+
+# Stop copying Windows prisma binaries — Render uses Linux
+src/generated/prisma/query_engine*
+src/generated/prisma/schema.prisma
+src/generated/prisma/runtime/
+src/generated/prisma/*.node

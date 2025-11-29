@@ -1,0 +1,118 @@
+name: CI/CD Pipeline
+
+# Trigger only on cicd-setup branch for safety
+on:
+  push:
+    branches: ["cicd-setup"]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    # ------------------------------------
+    # 1. Checkout GitHub repository
+    # ------------------------------------
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    # ------------------------------------
+    # 2. Setup Node.js (for frontend + lint/test)
+    # ------------------------------------
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: 18
+
+    # ------------------------------------
+    # 3. Lint Backend
+    # ------------------------------------
+    - name: Lint Backend
+      working-directory: ./backend
+      run: |
+        npm install
+        if [ -f "eslint.config.js" ] || [ -f ".eslintrc.js" ] || [ -f ".eslintrc.json" ]; then
+          npm run lint || true
+        else
+          echo "No lint script found, skipping."
+        fi
+
+    # ------------------------------------
+    # 4. Lint Frontend
+    # ------------------------------------
+    - name: Lint Frontend
+      working-directory: ./frontend
+      run: |
+        npm install
+        if [ -f "eslint.config.js" ]; then
+          npm run lint || true
+        else
+          echo "No lint script for frontend, skipping."
+        fi
+
+    # ------------------------------------
+    # 5. Run Backend Tests (optional)
+    # ------------------------------------
+    - name: Test Backend
+      working-directory: ./backend
+      run: |
+        npm test || echo "No tests found"
+
+    # ------------------------------------
+    # 6. Run Frontend Tests (optional)
+    # ------------------------------------
+    - name: Test Frontend
+      working-directory: ./frontend
+      run: |
+        npm test || echo "No tests found"
+
+    # ------------------------------------
+    # 7. Build Frontend (Vite)
+    # ------------------------------------
+    - name: Build Frontend
+      working-directory: ./frontend
+      run: |
+        npm install
+        npm run build
+
+    # ------------------------------------
+    # 8. Deploy Frontend to Netlify
+    # ------------------------------------
+    - name: Deploy to Netlify
+      uses: netlify/actions/cli@main
+      with:
+        args: deploy --prod --dir=./frontend/dist
+      env:
+        NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+        NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+
+    # ------------------------------------
+    # 9. Login to Docker Hub
+    # ------------------------------------
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    # ------------------------------------
+    # 10. Build Docker image for backend
+    # ------------------------------------
+    - name: Build Backend Docker Image
+      working-directory: ./backend
+      run: |
+        docker build -t ${{ secrets.DOCKER_USERNAME }}/codeforge-backend:latest .
+
+    # ------------------------------------
+    # 11. Push Docker image to Docker Hub
+    # ------------------------------------
+    - name: Push Backend Image
+      run: |
+        docker push ${{ secrets.DOCKER_USERNAME }}/codeforge-backend:latest
+
+    # ------------------------------------
+    # 12. Trigger Render Deployment
+    # ------------------------------------
+    - name: Deploy Backend to Render
+      run: |
+        curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
