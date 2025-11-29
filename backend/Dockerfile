@@ -3,21 +3,20 @@ FROM node:18
 # Create app directory
 WORKDIR /app
 
-# Copy package files (better caching)
+# Copy package files
 COPY package*.json ./
 
 # Install dependencies
 RUN npm install
 
-# Copy rest of the backend code
+# Copy the rest of the backend code
 COPY . .
 
-# Generate Prisma Client inside Docker (VERY IMPORTANT)
+# Generate Prisma Client
 RUN npx prisma generate
 
-# Expose backend port
-ENV PORT=5000
-EXPOSE 5000
+# Render will inject PORT automatically
+EXPOSE 8080
 
-# Start server
-CMD ["npm", "start"]
+# Start backend
+CMD ["node", "src/index.js"]
