@@ -47,6 +47,10 @@ app.use('/api/v1/submissions', submissionRoutes);
 app.use('/api/v1/playlist', playlistRoutes);
 app.use('/api/v1/ai', aiRoutes);
 
+app.get("/", (req, res) => {
+  res.json({ status: "ok", message: "CodeForge backend is running" });
+});
+
 // Start the server (IMPORTANT FIX)
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, '0.0.0.0', () => {
